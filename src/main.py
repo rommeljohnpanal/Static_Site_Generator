@@ -1,49 +1,52 @@
 import shutil
 import os
+import sys
 from textnode import *
 from htmlnode import LeafNode
 from code import *
 
-print("hello world")
+stat = "./static"
+src = "./content"
+dest = "./public"
+temp = "./template.html"
 
 def main():
-   test = TextNode("This is some anchor text", TextType.LINK.value, "http://www.boot.dev")
-   print(test)
+   
+   basepath = ""
 
-   src = "./content"
-   dest = "./public"
+   if len(sys.argv) > 1:
+      basepath = sys.argv[1]
+   elif len(sys.argv) == 1:
+      basepath = "/"
+   else:
+      raise ValueError("Too many arguments")
 
-   prep_folders(src, dest)
+
+
+   prep_folders(stat, dest)
 
    print("finished copying")
 
    # generate page from content/index. using template.html
    # generate_page("./content/index.md", "template.html", "./public/index.html")
-   # generate_pages_recursive(src, "template.html", dest)
+   generate_pages_recursive(src, temp, dest)
    
 
 
 
 
-def prep_folders(src, dest):
-   if not os.path.exists(dest):
-      os.mkdir(dest)
-   if not os.path.exists(src):
-      raise FileNotFoundError(f"The folder does not exist: {src}")
+def prep_folders(source_dir_path: str, dest_dir_path: str) -> None:
+    if not os.path.exists(dest_dir_path):
+        os.mkdir(dest_dir_path)
 
-   dest_list = os.listdir(dest)
-
-   for content in dest_list:
-      content_path = os.path.join(dest, content)
-      if os.path.isfile(content_path):
-         os.remove(content_path)
-         print(f"removing file {content_path}")
-      elif os.path.isdir(content_path):
-         shutil.rmtree(content_path)
-         print(f"removing folder {content_path}")
-   
-   # copy_from_to(src, dest)
-   generate_pages_recursive(src, "template.html", dest)
+    for filename in os.listdir(source_dir_path):
+        from_path = os.path.join(source_dir_path, filename)
+        dest_path = os.path.join(dest_dir_path, filename)
+        print(f" * {from_path} -> {dest_path}")
+        if os.path.isfile(from_path):
+            shutil.copy(from_path, dest_path)
+        else:
+            prep_folders(from_path, dest_path)
 
 
 def copy_from_to(src, dest):

@@ -2,6 +2,7 @@ import shutil
 import os
 from textnode import *
 from htmlnode import LeafNode
+from code import *
 
 print("hello world")
 
@@ -9,12 +10,20 @@ def main():
    test = TextNode("This is some anchor text", TextType.LINK.value, "http://www.boot.dev")
    print(test)
 
-   src = "./static"
+   src = "./content"
    dest = "./public"
 
    prep_folders(src, dest)
 
    print("finished copying")
+
+   # generate page from content/index. using template.html
+   # generate_page("./content/index.md", "template.html", "./public/index.html")
+   generate_pages_recursive(src, "template.html", dest)
+   
+
+
+
 
 def prep_folders(src, dest):
    if not os.path.exists(dest):

@@ -1,12 +1,22 @@
 import re
+import os
 from textnode import *
 from htmlnode import *
 
-
-def text_node_to_html_node(text_node):
-   if text_node.text_type == TextType.IMAGE:
-      return LeafNode("img", "", {"src": text_node.url, "alt": text_node.text})
-   return LeafNode(text_node.text_type.value, text_node.text, text_node.url)
+def text_node_to_html_node(text_node: TextNode) -> LeafNode:
+    if text_node.text_type == TextType.TEXT:
+        return LeafNode(None, text_node.text)
+    if text_node.text_type == TextType.BOLD:
+        return LeafNode("b", text_node.text)
+    if text_node.text_type == TextType.ITALIC:
+        return LeafNode("i", text_node.text)
+    if text_node.text_type == TextType.CODE:
+        return LeafNode("code", text_node.text)
+    if text_node.text_type == TextType.LINK:
+        return LeafNode("a", text_node.text, {"href": text_node.url})
+    if text_node.text_type == TextType.IMAGE:
+        return LeafNode("img", "", {"src": text_node.url, "alt": text_node.text})
+    raise ValueError(f"invalid text type: {text_node.text_type}")
 
 def split_nodes_delimiter(old_nodes, delimiter, text_type):
     new_nodes = []
@@ -100,7 +110,7 @@ def text_to_textnodes(text):
     new_nodes = split_nodes_image(new_nodes)
     return new_nodes
 
-def markdown_to_blocks(markdown: str) -> list[str]:
+def markdown_to_blocks(markdown: str):
     blocks = markdown.split("\n\n")
     filtered_blocks = []
     for block in blocks:
@@ -164,10 +174,6 @@ def block_to_html_node(block, block_type):
             block_cleaned = item.split(" ", 1)[1]
             children.append(ParentNode(tag="li", children=text_to_children(block_cleaned)))
         return ParentNode(tag="ol", children=children)
-    raise ValueError(f"invalid block type: {block_type}")
-
-
-
     # paragraph, heading, quote 
     if block_type.value == "paragraph":
         block_cleaned = block.replace("\n", " ")
@@ -178,21 +184,166 @@ def block_to_html_node(block, block_type):
     if block_type.value == "quote":
         block_cleaned = block.replace("> ", "", 1).strip()
         return ParentNode(tag="blockquote", children=text_to_children(block_cleaned))
+    
+    raise ValueError(f"invalid block type: {block_type}")
 
 
-def markdown_to_html_node(markdown):
+# def markdown_to_html_node(markdown):
+#     blocks = markdown_to_blocks(markdown)
+#     children = []
+#     for block in blocks:         
+#         block_type = block_to_block_type(block)
+#         block_node = block_to_html_node(block, block_type)
+#         children.append(block_node)
+    
+#     return ParentNode("div", children)
+
+
+
+def markdown_to_html_node(markdown: str) -> ParentNode:
     blocks = markdown_to_blocks(markdown)
     children = []
-    for block in blocks:         
-        block_type = block_to_block_type(block)
-        block_node = block_to_html_node(block, block_type)
-        children.append(block_node)
-    
-    return ParentNode("div", children)
+    for block in blocks:
+        html_node = block_to_html_node(block)
+        children.append(html_node)
+    return ParentNode("div", children, None)
+
+
+def block_to_html_node(block: str) -> ParentNode:
+    block_type = block_to_block_type(block)
+    if block_type == BlockType.PARAGRAPH:
+        return paragraph_to_html_node(block)
+    if block_type == BlockType.HEADING:
+        return heading_to_html_node(block)
+    if block_type == BlockType.CODE:
+        return code_to_html_node(block)
+    if block_type == BlockType.OLIST:
+        return olist_to_html_node(block)
+    if block_type == BlockType.ULIST:
+        return ulist_to_html_node(block)
+    if block_type == BlockType.QUOTE:
+        return quote_to_html_node(block)
+    raise ValueError("invalid block type")
+
+
+def text_to_children(text: str) -> list[HTMLNode]:
+    text_nodes = text_to_textnodes(text)
+    children = []
+    for text_node in text_nodes:
+        html_node = text_node_to_html_node(text_node)
+        children.append(html_node)
+    return children
+
+
+def paragraph_to_html_node(block: str) -> ParentNode:
+    lines = block.split("\n")
+    paragraph = " ".join(lines)
+    children = text_to_children(paragraph)
+    return ParentNode("p", children)
+
+
+def heading_to_html_node(block: str) -> ParentNode:
+    level = 0
+    for char in block:
+        if char == "#":
+            level += 1
+        else:
+            break
+    if level + 1 >= len(block):
+        raise ValueError(f"invalid heading level: {level}")
+    text = block[level + 1 :]
+    children = text_to_children(text)
+    return ParentNode(f"h{level}", children)
+
+
+def code_to_html_node(block: str) -> ParentNode:
+    if not block.startswith("```") or not block.endswith("```"):
+        raise ValueError("invalid code block")
+    text = block[4:-3]
+    raw_text_node = TextNode(text, TextType.TEXT)
+    child = text_node_to_html_node(raw_text_node)
+    code = ParentNode("code", [child])
+    return ParentNode("pre", [code])
+
+
+def olist_to_html_node(block: str) -> ParentNode:
+    items = block.split("\n")
+    html_items = []
+    for item in items:
+        parts = item.split(". ", 1)
+        text = parts[1]
+        children = text_to_children(text)
+        html_items.append(ParentNode("li", children))
+    return ParentNode("ol", html_items)
+
+
+def ulist_to_html_node(block: str) -> ParentNode:
+    items = block.split("\n")
+    html_items = []
+    for item in items:
+        text = item[2:]
+        children = text_to_children(text)
+        html_items.append(ParentNode("li", children))
+    return ParentNode("ul", html_items)
+
+
+def quote_to_html_node(block: str) -> ParentNode:
+    lines = block.split("\n")
+    new_lines = []
+    for line in lines:
+        if not line.startswith(">"):
+            raise ValueError("invalid quote block")
+        new_lines.append(line.lstrip(">").strip())
+    content = " ".join(new_lines)
+    children = text_to_children(content)
+    return ParentNode("blockquote", children)
 
 
 
 def extract_title(markdown):
-   if markdown.startswith("# "):
-      raise Exception("Exception: no h1 header")
+   if not markdown.startswith("# "):
+      raise Exception("No h1 header")
    return markdown[2:].strip()
+
+def generate_page(from_path, template_path, dest_path):
+    print(f"Generating page from {from_path} to {dest_path} using {template_path}")
+
+    with open(from_path, 'r') as f:
+        content_from = f.read()
+
+    with open(template_path, 'r') as f:
+        content_template = f.read()
+    
+    from_html = markdown_to_html_node(content_from)
+    new_content = from_html.to_html()
+    # template_html = markdown_to_html_node(content_template).to_html() 
+
+    page_title = extract_title(content_from)
+
+    content_template = content_template.replace("{{ Title }}", page_title).replace("{{ Content }}", new_content)
+
+    # if not os.path.exists(dest_path):
+    #     os.makedirs(dest_path)
+
+    with open(dest_path, 'w', encoding='utf-8') as f:
+        f.write(content_template)
+
+
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+    print(f"Generating page recursively from {dir_path_content} to {dest_dir_path}, using {template_path}")
+    list_dir = os.listdir(dir_path_content)
+
+    for content in list_dir:        
+        content_path = os.path.join(dir_path_content, content)
+        content_dest = os.path.join(dest_dir_path, content.replace(".md", ".html"))
+        # dest_path = 
+        if os.path.isfile(content_path):
+            if content.endswith(".md"):            
+                generate_page(content_path, template_path, content_dest)
+            
+        elif os.path.isdir(content_path):
+            new_folder = os.path.join(dest_dir_path, content)
+            if not os.path.exists(new_folder):
+                os.mkdir(new_folder)
+            generate_pages_recursive(content_path, template_path, new_folder)
+

@@ -149,7 +149,7 @@ def block_to_html_node(block, block_type):
     if block_type.value == "code":
         block_cleaned = block[3:-3].strip().lstrip("\n")
         text_node = TextNode(block_cleaned, TextType.CODE)
-        return ParentNode("pre", [ParentNode("code", [text_node_to_html_node(text_node)])])
+        return ParentNode("pre", [text_node_to_html_node(text_node)])
     if block_type.value == "unordered_list":
         block_list = block.split("\n")
         children = []
@@ -189,3 +189,10 @@ def markdown_to_html_node(markdown):
         children.append(block_node)
     
     return ParentNode("div", children)
+
+
+
+def extract_title(markdown):
+   if markdown.startswith("# "):
+      raise Exception("Exception: no h1 header")
+   return markdown[2:].strip()

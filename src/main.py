@@ -8,36 +8,49 @@ print("hello world")
 def main():
    test = TextNode("This is some anchor text", TextType.LINK.value, "http://www.boot.dev")
    print(test)
-   
-   copy_from_to("./static", "./public")
+
+   src = "./static"
+   dest = "./public"
+
+   prep_folders(src, dest)
+
    print("finished copying")
+
+def prep_folders(src, dest):
+   if not os.path.exists(dest):
+      os.mkdir(dest)
+   if not os.path.exists(src):
+      raise FileNotFoundError(f"The folder does not exist: {src}")
+
+   dest_list = os.listdir(dest)
+
+   for content in dest_list:
+      content_path = os.path.join(dest, content)
+      if os.path.isfile(content_path):
+         os.remove(content_path)
+         print(f"removing file {content_path}")
+      elif os.path.isdir(content_path):
+         shutil.rmtree(content_path)
+         print(f"removing folder {content_path}")
+   
+   copy_from_to(src, dest)
 
 
 def copy_from_to(src, dest):
-   if not os.path.exists(dest):
-      raise FileNotFoundError(f"The folder does not exist: {dest}")
-   if not os.path.exists(src):
-      raise FileNotFoundError(f"The folder does not exist: {src}")
-   
    print(f"source: {src} || dest: {dest}")
-
-   dest_list = os.listdir(dest):
-
-   for content in dest_list:
-      if os.path.isfile(content):
-         os.remove(content)
-      elif os.path.isdir(content):
-         shutil.rmtree(content)
    
    src_list = os.listdir(src)
 
-   for item in src_list:      
-      if os.path.isfile(item):
-         shutil.copy(item, dest)
-      elif os.path.isdir(item):
-         new_folder = os.mkdir(os.path.join(dest, item))
-         copy_from_to(item, new_folder)
-      
+   for item in src_list:
+      item_path = os.path.join(src, item)
+      if os.path.isfile(item_path):
+         shutil.copy(item_path, os.path.join(dest, item))
+         print(f"copy item {item_path}")
+      elif os.path.isdir(item_path):
+         new_folder = os.path.join(dest, item)
+         os.mkdir(new_folder)
+         print(f"recursing into {new_folder}")
+         copy_from_to(item_path, new_folder)
 
 
 

@@ -19,7 +19,7 @@ def main():
 
    # generate page from content/index. using template.html
    # generate_page("./content/index.md", "template.html", "./public/index.html")
-   generate_pages_recursive(src, "template.html", dest)
+   # generate_pages_recursive(src, "template.html", dest)
    
 
 
@@ -42,7 +42,8 @@ def prep_folders(src, dest):
          shutil.rmtree(content_path)
          print(f"removing folder {content_path}")
    
-   copy_from_to(src, dest)
+   # copy_from_to(src, dest)
+   generate_pages_recursive(src, "template.html", dest)
 
 
 def copy_from_to(src, dest):

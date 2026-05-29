@@ -7,7 +7,8 @@ from code import *
 
 stat = "./static"
 src = "./content"
-dest = "./public"
+# dest = "./public"
+dest = "./docs"
 temp = "./template.html"
 
 def main():
@@ -29,7 +30,7 @@ def main():
 
    # generate page from content/index. using template.html
    # generate_page("./content/index.md", "template.html", "./public/index.html")
-   generate_pages_recursive(src, temp, dest)
+   generate_pages_recursive(src, temp, dest, basepath)
    
 
 

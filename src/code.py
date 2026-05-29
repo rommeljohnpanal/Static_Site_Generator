@@ -1,5 +1,6 @@
 import re
 import os
+from pathlib import Path
 from textnode import *
 from htmlnode import *
 
@@ -300,47 +301,48 @@ def quote_to_html_node(block: str) -> ParentNode:
 
 
 
-def extract_title(markdown):
-   if not markdown.startswith("# "):
-      raise Exception("No h1 header")
-   return markdown[2:].strip()
+def extract_title(md):
+    lines = md.split("\n")
+    for line in lines:
+        if line.startswith("# "):
+            return line[2:]
+    raise ValueError("no title found")
 
 def generate_page(from_path, template_path, dest_path, basepath=None):
-    print(f"Generating page from {from_path} to {dest_path} using {template_path}")
+    print(f" * {from_path} {template_path} -> {dest_path}")
+    from_file = open(from_path, "r")
+    markdown_content = from_file.read()
+    from_file.close()
 
-    with open(from_path, 'r') as f:
-        content_from = f.read()
+    template_file = open(template_path, "r")
+    template = template_file.read()
+    template_file.close()
 
-    with open(template_path, 'r') as f:
-        content_template = f.read()
-    
-    from_html = markdown_to_html_node(content_from)
-    new_content = from_html.to_html()
-    # template_html = markdown_to_html_node(content_template).to_html() 
+    node = markdown_to_html_node(markdown_content)
+    html = node.to_html()
 
-    page_title = extract_title(content_from)
+    title = extract_title(markdown_content)
+    template = template.replace("{{ Title }}", title)
+    template = template.replace('href="/"', 'href="{basepath}"')
+    template = template.replace('src="/"', 'src="{basepath}"')
+    template = template.replace("{{ Content }}", html)
 
-    content_template = content_template.replace("{{ Title }}", page_title).replace("{{ Content }}", new_content)
+    dest_dir_path = os.path.dirname(dest_path)
+    if dest_dir_path != "":
+        os.makedirs(dest_dir_path, exist_ok=True)
+    to_file = open(dest_path, "w")
+    to_file.write(template)
 
-    with open(dest_path, 'w', encoding='utf-8') as f:
-        f.write(content_template)
 
-
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath=None):
-    print(f"Generating page recursively from {dir_path_content} to {dest_dir_path}, using {template_path}")
-    list_dir = os.listdir(dir_path_content)
-
-    for content in list_dir:        
-        content_path = os.path.join(dir_path_content, content)
-        content_dest = os.path.join(dest_dir_path, content.replace(".md", ".html"))
-        # dest_path = 
-        if os.path.isfile(content_path):
-            if content.endswith(".md"):            
-                generate_page(content_path, template_path, content_dest)
-            
-        elif os.path.isdir(content_path):
-            new_folder = os.path.join(dest_dir_path, content)
-            if not os.path.exists(new_folder):
-                os.mkdir(new_folder)
-            generate_pages_recursive(content_path, template_path, new_folder)
+def generate_pages_recursive(
+    dir_path_content: str, template_path: str, dest_dir_path: str, basepath=None
+) -> None:
+    for filename in os.listdir(dir_path_content):
+        from_path = os.path.join(dir_path_content, filename)
+        dest_path = os.path.join(dest_dir_path, filename)
+        if os.path.isfile(from_path):
+            dest_path = Path(dest_path).with_suffix(".html")
+            generate_page(from_path, template_path, dest_path)
+        else:
+            generate_pages_recursive(from_path, template_path, dest_path)
 
